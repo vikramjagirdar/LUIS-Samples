@@ -8,13 +8,15 @@ const spellService = require('./spell-service');
 
 // Setup Restify Server
 const server = restify.createServer();
-server.listen(process.env.port || process.env.PORT || 3978, () => {
+server.listen(process.env.port || process.env.PORT || 8080, () => {
     console.log(`${server.name} listening to ${server.url}`);
 });
 // Create connector and listen for messages
 const connector = new builder.ChatConnector({
-    appId: process.env.MICROSOFT_APP_ID,
-    appPassword: process.env.MICROSOFT_APP_PASSWORD
+    // appId: process.env.MICROSOFT_APP_ID,
+    // appPassword: process.env.MICROSOFT_APP_PASSWORD
+    appId: null,
+    appPassword: null
 });
 server.post('/api/messages', connector.listen());
 
@@ -28,13 +30,17 @@ var bot = new builder.UniversalBot(connector, function (session) {
 
 // You can provide your own model by specifing the 'LUIS_MODEL_URL' environment variable
 // This Url can be obtained by uploading or creating your model from the LUIS portal: https://www.luis.ai/
-const recognizer = new builder.LuisRecognizer(process.env.LUIS_MODEL_URL);
+const recognizer = new builder.LuisRecognizer("https://westus.api.cognitive.microsoft.com/luis/v2.0/apps/2acfc32a-8667-431b-80da-e60ef10ac430?subscription-key=9cd99bc8b2844b11b5ef6b5791a64b5b");
 bot.recognizer(recognizer);
 
-bot.dialog('SearchHotels', [
+
+
+
+bot.dialog('yes_intent', [
     (session, args, next) => {
-        session.send(`Welcome to the Hotels finder! We are analyzing your message: 'session.message.text'`);
-        // try extracting entities
+        console.log('Chekcing JMV');
+        session.send(`Welcome to Hungry Belly,  We are analyzing your message: 'session.message.text'`);
+        
         const cityEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'builtin.geography.city');
         const airportEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'AirportCode');
         if (cityEntity) {
@@ -74,71 +80,63 @@ bot.dialog('SearchHotels', [
             });
     }
 ]).triggerAction({
-    matches: 'SearchHotels',
+    matches: 'yes_intent',
     onInterrupted:  session => {
         session.send('Please provide a destination');
     }
 });
 
-bot.dialog('ShowHotelsReviews', (session, args) => {
+bot.dialog('show_food', (session, args) => {
     // retrieve hotel name from matched entities
-    const hotelEntity = builder.EntityRecognizer.findEntity(args.intent.entities, 'Hotel');
-    if (hotelEntity) {
-        session.send(`Looking for reviews of '${hotelEntity.entity}'...`);
-        Store
-            .searchHotelReviews(hotelEntity.entity)
-            .then(reviews => {
-                let message = new builder.Message()
-                    .attachmentLayout(builder.AttachmentLayout.carousel)
-                    .attachments(reviews.map(reviewAsAttachment));
-                session.endDialog(message);
-            });
-    }
+    console.log("JMV inside intent");
+    
+    session.send(`Showing burgers and fries`);
+
 }).triggerAction({
-    matches: 'ShowHotelsReviews'
+    matches: 'show_food'
 });
 
-bot.dialog('Help', session => {
-    session.endDialog(`Hi! Try asking me things like 'search hotels in Seattle', 'search hotels near LAX airport' or 'show me the reviews of The Bot Resort'`);
-}).triggerAction({
-    matches: 'Help'
-});
+// bot.dialog('Help', session => {
+//     session.endDialog(`jmv`);
+// }).triggerAction({
+//     matches: 'Help'
+// });
 
-// Spell Check
-if (process.env.IS_SPELL_CORRECTION_ENABLED === 'true') {
-    bot.use({
-        botbuilder: (session, next) => {
-            spellService
-                .getCorrectedText(session.message.text)
-                .then(text => {
-                    session.message.text = text;
-                    next();
-                })
-                .catch(error => {
-                    console.error(error);
-                    next();
-                });
-        }
-    });
-}
+// // Spell Check
+// if (process.env.IS_SPELL_CORRECTION_ENABLED === 'true') {
+//     bot.use({
+//         botbuilder: (session, next) => {
+//             spellService
+//                 .getCorrectedText(session.message.text)
+//                 .then(text => {
+//                     session.message.text = text;
+//                     next();
+//                 })
+//                 .catch(error => {
+//                     console.error(error);
+//                     next();
+//                 });
+//         }
+//     });
+// }
 
-// Helpers
-const hotelAsAttachment = hotel => {
-    return new builder.HeroCard()
-        .title(hotel.name)
-        .subtitle('%d stars. %d reviews. From $%d per night.', hotel.rating, hotel.numberOfReviews, hotel.priceStarting)
-        .images([new builder.CardImage().url(hotel.image)])
-        .buttons([
-            new builder.CardAction()
-                .title('More details')
-                .type('openUrl')
-                .value('https://www.bing.com/search?q=hotels+in+' + encodeURIComponent(hotel.location))
-        ]);
-}
+// // Helpers
+// const hotelAsAttachment = hotel => {
+//     return new builder.HeroCard()
+//         .title(hotel.name)
+//         .subtitle('%d stars. %d reviews. From $%d per night.', hotel.rating, hotel.numberOfReviews, hotel.priceStarting)
+//         .images([new builder.CardImage().url(hotel.image)])
+//         .buttons([
+//             new builder.CardAction()
+//                 .title('More details')
+//                 .type('openUrl')
+//                 .value('https://www.bing.com/search?q=hotels+in+' + encodeURIComponent(hotel.location))
+//         ]);
+// }
 
-const reviewAsAttachment = review => {
-    return new builder.ThumbnailCard()
-        .title(review.title)
-        .text(review.text)
-        .images([new builder.CardImage().url(review.image)]);
-}
+// const reviewAsAttachment = review => {
+//     return new builder.ThumbnailCard()
+//         .title(review.title)
+//         .text(review.text)
+//         .images([new builder.CardImage().url(review.image)]);
+// }
